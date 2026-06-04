@@ -26,7 +26,15 @@ app.use((req, res, next) => {
 });
 
 let users = [];
-let loginAttempts = {}; // ✅ MUST be here
+let payments = [];
+
+let employees = [
+  {
+    username: "employee1",
+    password: "$2b$10$UjS2pN5wQKk2xWf8cT8J8eM5xYjD2kVxV8rK2nR1vYwF9xQJm5JbS"
+  }
+];
+let loginAttempts = {}; 
 
 // ================= REGISTER =================
 app.post("/register", async (req, res) => {
@@ -113,6 +121,96 @@ app.post("/login", async (req, res) => {
   }
 });
 
+app.post("/employee-login", async (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    const employee = employees.find(
+      e => e.username === username
+    );
+
+    if (!employee) {
+      return res.status(400).json({
+        message: "Employee not found"
+      });
+    }
+
+    const isMatch = await bcrypt.compare(
+      password,
+      employee.password
+    );
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "Invalid credentials"
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        username: employee.username,
+        role: "employee"
+      },
+      "supersecretkey",
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      message: "Employee login successful",
+      token
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+});
+
+app.post("/payment", (req, res) => {
+
+  console.log("PAYMENT ROUTE HIT");
+  console.log(req.body);
+
+  const {
+    amount,
+    currency,
+    provider,
+    swiftCode,
+    beneficiaryAccount
+  } = req.body;
+
+  if (
+    !amount ||
+    !currency ||
+    !provider ||
+    !swiftCode ||
+    !beneficiaryAccount
+  ) {
+    return res.status(400).json({
+      message: "Missing payment information"
+    });
+  }
+
+  const payment = {
+    id: payments.length + 1,
+    amount,
+    currency,
+    provider,
+    swiftCode,
+    beneficiaryAccount,
+    status: "Pending"
+  };
+
+  payments.push(payment);
+
+  console.log("PAYMENT CREATED:", payment);
+
+  res.json({
+    message: "Payment submitted successfully"
+  });
+});
+
 // ================= DASHBOARD =================
 app.get("/dashboard", (req, res) => {
   const authHeader = req.headers.authorization;
@@ -129,6 +227,12 @@ app.get("/dashboard", (req, res) => {
   } catch {
     res.status(403).json({ message: "Invalid token" });
   }
+});
+
+app.get("/test", (req, res) => {
+  res.json({
+    message: "Backend is updated"
+  });
 });
 
 app.listen(5000, () => {

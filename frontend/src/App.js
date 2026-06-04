@@ -5,6 +5,11 @@ function App() {
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("");
+  const [provider, setProvider] = useState("");
+  const [swiftCode, setSwiftCode] = useState("");
+  const [beneficiaryAccount, setBeneficiaryAccount] = useState("");
 
   const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
@@ -84,6 +89,35 @@ const accessDashboard = async () => {
   }
 };
 
+const handlePayment = async (e) => {
+  e.preventDefault();
+
+  try {
+    const response = await fetch(
+      "http://localhost:5000/payment",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount,
+          currency,
+          provider,
+          swiftCode,
+          beneficiaryAccount,
+        }),
+      }
+    );
+
+    const data = await response.json();
+    setMessage(data.message);
+
+  } catch (error) {
+    console.error(error);
+    setMessage("Payment failed");
+  }
+};
 
   return (
     <div style={{ padding: "20px" }}>
@@ -148,6 +182,64 @@ const accessDashboard = async () => {
 
       <br />
       <button onClick={accessDashboard}>Access Dashboard</button>
+      <hr />
+
+<h2>International Payment</h2>
+
+<form onSubmit={handlePayment}>
+
+  <input
+    type="number"
+    placeholder="Amount"
+    value={amount}
+    onChange={(e) => setAmount(e.target.value)}
+  />
+
+  <br /><br />
+
+  <input
+    type="text"
+    placeholder="Currency (USD)"
+    value={currency}
+    onChange={(e) => setCurrency(e.target.value)}
+  />
+
+  <br /><br />
+
+  <input
+    type="text"
+    placeholder="Provider (SWIFT)"
+    value={provider}
+    onChange={(e) => setProvider(e.target.value)}
+  />
+
+  <br /><br />
+
+  <input
+    type="text"
+    placeholder="SWIFT Code"
+    value={swiftCode}
+    onChange={(e) => setSwiftCode(e.target.value)}
+  />
+
+  <br /><br />
+
+  <input
+    type="text"
+    placeholder="Beneficiary Account"
+    value={beneficiaryAccount}
+    onChange={(e) =>
+      setBeneficiaryAccount(e.target.value)
+    }
+  />
+
+  <br /><br />
+
+  <button type="submit">
+    Pay Now
+  </button>
+
+</form>
     </div>
   );
 }
