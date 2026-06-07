@@ -9,8 +9,8 @@ jobs:
       - checkout
 
       - run:
-          name: Install Dependencies
-          command: npm install
+          name: Install Backend Dependencies
+          command: cd backend && npm install
 
       - run:
           name: Run Security Audit
