@@ -1,7 +1,8 @@
 import React, { useState } from "react";
+import axios from "axios";
+import "./App.css";
 
 function App() {
-  const [name, setName] = useState("");
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -10,36 +11,23 @@ function App() {
   const [provider, setProvider] = useState("");
   const [swiftCode, setSwiftCode] = useState("");
   const [beneficiaryAccount, setBeneficiaryAccount] = useState("");
+  const [employeeUsername, setEmployeeUsername] = useState("");
+  const [employeePassword, setEmployeePassword] = useState("");
+  const [employeeLoggedIn, setEmployeeLoggedIn] = useState(false);
+  const [payments, setPayments] = useState([]);
 
   const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const nameRegex = /^[A-Za-z ]+$/;
 
-    if (!passwordRegex.test(password)) {
-      setMessage("Password must be strong (8 chars, uppercase, number, symbol)");
-      return;
-    }
+  const accountRegex = /^[0-9]{6,12}$/;
 
-    try {
-      const response = await fetch("http://127.0.0.1:5000/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          account,
-          password,
-        }),
-      });
+  const currencyRegex = /^(USD|EUR|GBP|ZAR)$/;
 
-      const data = await response.json();
-      setMessage(data.message);
-    } catch (error) {
-      setMessage("Error connecting to server");
-    }
-  };
+  const providerRegex = /^(SWIFT)$/;
+
+  const swiftRegex =
+  /^[A-Z0-9]{6,11}$/;
 
 const handleLogin = async (e) => {
   e.preventDefault();
@@ -57,6 +45,86 @@ const handleLogin = async (e) => {
 
     if (response.ok) {
       setMessage("Login successful");
+
+      const employeeLogin = async () => {
+
+    try {
+
+        const response = await axios.post(
+            "http://localhost:5000/employee-login",
+            {
+                username: employeeUsername,
+                password: employeePassword
+            }
+        );
+
+        alert(response.data.message);
+
+        setEmployeeLoggedIn(true);
+
+        loadPayments();
+
+    } catch (error) {
+
+        alert(
+            error.response?.data?.message ||
+            "Employee login failed"
+        );
+
+    }
+};
+
+const loadPayments = async () => {
+  try {
+    const response = await axios.get(
+      "http://localhost:5000/payments"
+    );
+
+    setPayments(response.data);
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+const verifyPayment = async (index) => {
+  try {
+    const response = await axios.post(
+      "http://localhost:5000/verify-payment",
+      { index }
+    );
+
+    alert(response.data.message);
+
+    loadPayments();
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+const submitToSwift = async (index) => {
+
+    try {
+
+        const response =
+            await axios.post(
+                "http://localhost:5000/submit-swift",
+                { index }
+            );
+
+        alert(response.data.message);
+
+        loadPayments();
+
+    } catch (error) {
+
+        alert(
+            error.response?.data?.message ||
+            "Failed to submit payment"
+        );
+
+    }
+};
+
 
       // 🔐 STORE TOKEN
       localStorage.setItem("token", data.token);
@@ -92,6 +160,26 @@ const accessDashboard = async () => {
 const handlePayment = async (e) => {
   e.preventDefault();
 
+  if (!accountRegex.test(beneficiaryAccount)) {
+  setMessage("Invalid beneficiary account");
+  return;
+}
+
+if (!currencyRegex.test(currency)) {
+  setMessage("Currency must be USD, EUR, GBP or ZAR");
+  return;
+}
+
+if (!providerRegex.test(provider)) {
+  setMessage("Provider must be SWIFT");
+  return;
+}
+
+if (!swiftRegex.test(swiftCode)) {
+  setMessage("Invalid SWIFT code");
+  return;
+}
+
   try {
     const response = await fetch(
       "http://localhost:5000/payment",
@@ -119,44 +207,104 @@ const handlePayment = async (e) => {
   }
 };
 
+const loadPayments = async () => {
+
+    try {
+
+        const response =
+            await axios.get(
+                "http://localhost:5000/payments"
+            );
+
+        setPayments(response.data);
+
+    } catch (error) {
+
+        console.error(error);
+
+    }
+};
+
+const employeeLogin = async () => {
+
+    try {
+
+        const response =
+            await axios.post(
+                "http://localhost:5000/employee-login",
+                {
+                    username: employeeUsername,
+                    password: employeePassword
+                }
+            );
+
+        alert(response.data.message);
+
+        setEmployeeLoggedIn(true);
+
+        loadPayments();
+
+    } catch (error) {
+
+        alert("Employee login failed");
+
+    }
+};
+
+const verifyPayment = async (index) => {
+
+    try {
+
+        await axios.post(
+            "http://localhost:5000/verify-payment",
+            { index }
+        );
+
+        loadPayments();
+
+    } catch (error) {
+
+        console.error(error);
+
+    }
+};
+
+const submitToSwift = async (index) => {
+
+    try {
+
+        const response =
+            await axios.post(
+                "http://localhost:5000/submit-swift",
+                { index }
+            );
+
+        alert(response.data.message);
+
+        loadPayments();
+
+    } catch (error) {
+
+        alert(
+            error.response?.data?.message ||
+            "Failed to submit payment"
+        );
+
+    }
+};
+
   return (
     <div style={{ padding: "20px" }}>
-      <h2>Register</h2>
 
-      <form onSubmit={handleRegister}>
-        <input
-          type="text"
-          placeholder="Full Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <br />
-        <br />
-
-        <input
-          type="text"
-          placeholder="Account Number"
-          value={account}
-          onChange={(e) => setAccount(e.target.value)}
-        />
-        <br />
-        <br />
-
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <br />
-        <br />
-
-        <button type="submit">Register</button>
-      </form>
-
-      <p>{message}</p>
-
+    <p>
+Customer Account: 12345678
+<br />
+Customer Password: password123
+</p>
+      
       <h2>Login</h2>
+
+      <p> {message}</p>
 
       <form onSubmit={handleLogin}>
         <input
@@ -183,6 +331,108 @@ const handlePayment = async (e) => {
       <br />
       <button onClick={accessDashboard}>Access Dashboard</button>
       <hr />
+
+      <hr />
+
+
+
+<h1>Employee Portal</h1>
+
+<input
+    placeholder="Username"
+    value={employeeUsername}
+    onChange={(e) =>
+        setEmployeeUsername(e.target.value)
+    }
+/>
+
+<br /><br />
+
+<input
+    type="password"
+    placeholder="Password"
+    value={employeePassword}
+    onChange={(e) =>
+        setEmployeePassword(e.target.value)
+    }
+/>
+
+<br /><br />
+
+<button onClick={employeeLogin}>
+    Employee Login
+</button>
+
+{
+employeeLoggedIn && (
+
+<div>
+
+<h2>Pending Payments</h2>
+
+{
+payments.map((payment, index) => (
+
+<div key={payment.id}>
+
+<p>
+Amount:
+{payment.amount}
+{" "}
+{payment.currency}
+</p>
+
+<p>
+Provider:
+{payment.provider}
+</p>
+
+<p>
+SWIFT:
+{payment.swiftCode}
+</p>
+
+<p>
+Account:
+{payment.beneficiaryAccount}
+</p>
+
+<p>
+Status:
+{payment.status}
+</p>
+
+<p>
+  Verified: {payment.verified ? "Yes" : "No"}
+</p>
+
+<button
+onClick={() =>
+verifyPayment(index)
+}
+>
+Verify
+</button>
+
+<button
+onClick={() =>
+submitToSwift(index)
+}
+>
+Submit To SWIFT
+</button>
+
+<hr />
+
+</div>
+
+))
+}
+
+</div>
+
+)
+}
 
 <h2>International Payment</h2>
 

@@ -25,54 +25,24 @@ app.use((req, res, next) => {
   next();
 });
 
-let users = [];
+let users = [
+  {
+    name: "John Doe",
+    account: "12345678",
+    password:
+      "$2b$10$5xNpxGK36qocFgA6TI5Sb.MI26UcbSHndrFzFWEK/y7lhTxSms19y"
+  }
+];
+
 let payments = [];
 
 let employees = [
   {
     username: "employee1",
-    password: "$2b$10$UjS2pN5wQKk2xWf8cT8J8eM5xYjD2kVxV8rK2nR1vYwF9xQJm5JbS"
+    password: "$2b$10$5xNpxGK36qocFgA6TI5Sb.MI26UcbSHndrFzFWEK/y7lhTxSms19y"
   }
 ];
 let loginAttempts = {}; 
-
-// ================= REGISTER =================
-app.post("/register", async (req, res) => {
-  try {
-    const { name, account, password } = req.body;
-
-    if (!name || !account || !password) {
-      return res.status(400).json({ message: "Missing fields" });
-    }
-
-    const existingUser = users.find(u => u.account === account);
-    if (existingUser) {
-      return res.status(400).json({ message: "Account already exists" });
-    }
-
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
-
-    if (!passwordRegex.test(password)) {
-      return res.status(400).json({ message: "Weak password" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    users.push({
-      name,
-      account,
-      password: hashedPassword
-    });
-
-    console.log("USER SAVED:", users);
-
-    res.json({ message: "User registered successfully" });
-
-  } catch (err) {
-    console.error("REGISTER ERROR:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
 // ================= LOGIN =================
 app.post("/login", async (req, res) => {
@@ -122,6 +92,8 @@ app.post("/login", async (req, res) => {
 });
 
 app.post("/employee-login", async (req, res) => {
+  console.log(req.body);
+
   const { username, password } = req.body;
 
   try {
@@ -129,16 +101,18 @@ app.post("/employee-login", async (req, res) => {
       e => e.username === username
     );
 
+      console.log("USERNAME RECEIVED:", username);
+      console.log("EMPLOYEE FOUND:", employee);
+
     if (!employee) {
       return res.status(400).json({
         message: "Employee not found"
       });
     }
 
-    const isMatch = await bcrypt.compare(
-      password,
-      employee.password
-    );
+    const isMatch = await bcrypt.compare(password, employee.password);
+
+    console.log("PASSWORD MATCH:", isMatch);
 
     if (!isMatch) {
       return res.status(400).json({
@@ -199,7 +173,8 @@ app.post("/payment", (req, res) => {
     provider,
     swiftCode,
     beneficiaryAccount,
-    status: "Pending"
+    status: "Pending",
+    verified: false
   };
 
   payments.push(payment);
@@ -209,6 +184,54 @@ app.post("/payment", (req, res) => {
   res.json({
     message: "Payment submitted successfully"
   });
+});
+
+app.get("/payments", (req, res) => {
+  res.json(payments);
+});
+
+app.post("/verify-payment", (req, res) => {
+
+    const { index } = req.body;
+
+    if (payments[index]) {
+
+        payments[index].verified = true;
+        payments[index].status = "Verified";
+
+        return res.json({
+            message: "Payment verified"
+        });
+    }
+
+    res.status(404).json({
+        message: "Payment not found"
+    });
+
+});
+
+app.post("/submit-swift", (req, res) => {
+
+    const { index } = req.body;
+
+    if (payments[index]) {
+
+        if (!payments[index].verified) {
+            return res.status(400).json({
+                message: "Payment must be verified first"
+            });
+        }
+
+        payments[index].status = "Submitted To SWIFT";
+
+        return res.json({
+            message: "Payment submitted to SWIFT"
+        });
+    }
+
+    res.status(404).json({
+        message: "Payment not found"
+    });
 });
 
 // ================= DASHBOARD =================
