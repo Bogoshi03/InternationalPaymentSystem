@@ -19,10 +19,16 @@ app.use(cors());
 app.use(express.json());
 
 app.use((req, res, next) => {
-  if (req.headers["x-forwarded-proto"] !== "https") {
-    console.log("Warning: Connection not secure (HTTP)");
-  }
-  next();
+    if (
+        process.env.NODE_ENV === "production" &&
+        req.headers["x-forwarded-proto"] !== "https"
+    ) {
+        return res.status(403).json({
+            error: "HTTPS connection required"
+        });
+    }
+
+    next();
 });
 
 let users = [
